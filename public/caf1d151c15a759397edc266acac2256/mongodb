@@ -1,0 +1,42 @@
+http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/
+
+http://mongomapper.com/documentation/getting-started/rails.html
+
+rails new my_app --skip-active-record
+
+gem 'mongo_mapper'
+gem 'bson_ext'
+
+
+mongo
+
+
+Model
+
+class SiteVariable
+  	include MongoMapper::Document
+  	attr_accessible :email, :mails_count
+
+	key :email,  String
+	key :mails_count,   Integer
+	timestamps!
+end
+
+
+initializers/mongo.rb
+
+MongoMapper.connection = Mongo::Connection.new('localhost', 27017)
+MongoMapper.database = "resume-#{Rails.env}"
+
+if defined?(PhusionPassenger)
+   PhusionPassenger.on_event(:starting_worker_process) do |forked|
+     MongoMapper.connection.connect if forked
+   end
+end
+
+
+
+
+
+
+

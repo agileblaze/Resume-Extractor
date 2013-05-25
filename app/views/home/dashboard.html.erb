@@ -1,0 +1,72 @@
+<div class="row">
+    <div class="span3 bs-docs-sidebar">
+        <ul class="nav nav-list bs-docs-sidenav affix">
+          <li><a href="#attachtments"><i class="icon-chevron-right"></i>Download Attachtments</a></li>
+          <li><a href="#resumes"><i class="icon-chevron-right"></i>Matching Resume</a></li>
+        </ul>
+    </div>
+    <div class="span9">
+        <!-- Email Attachments
+        ================================================== -->
+        <section id="attachtments">
+          <div class="page-header">
+              <h1><small>Download Attachments</small></h1>
+          </div>
+
+          <%= form_tag home_dashboard_path do  %>
+              <div>
+                    <%= label_tag :career_email %>
+                    <%= email_field_tag :career_email, "", :autofocus => true %>
+              </div>
+
+              <div>
+                    <%= label_tag :career_password %>
+                    <%= password_field_tag :career_password %>
+              </div>
+
+              <div><%= button_tag "Sign in", :onclick => "authorize_gmail(); return false", :class => "btn btn-medium btn-primary" %><img id="gmail_loading" src="/assets/loading.gif" style="display:none;"></div>          
+          <% end %>
+
+          <div class="progress progress-success progress-striped">
+              <div id="mail_attchments_per" class="bar" style="width: 0%"></div>
+          </div>
+          
+          <ul id="mail_attchments"> </ul>
+        </section>
+
+        <br>
+
+        <!-- Resume
+        ================================================== -->
+        <section id="resumes">
+          <div class="page-header">
+              <h1><small>Matching Resumes</small></h1>
+          </div>
+
+          <%= form_tag home_dashboard_path do  %>
+              <div>
+                    <%= label_tag :keyword %>
+                    <%= text_field_tag :keyword, "", :autofocus => true %>
+              </div>
+
+              <div><%= button_tag "Search", :onclick => "find_resume(); return false", :class => "btn btn-medium btn-primary" %><img id="resume_loading" src="/assets/loading.gif" style="display:none;">
+              </div>          
+          <% end %>
+          
+          <ul id="resume_files"> </ul>
+        </section>
+
+        <br><br><br>
+
+    </div>
+</div>
+
+
+
+<script type="text/template" class="messge-box-template" style="display:none">
+{{#.}}<li>{{.}}</li>{{/.}}
+</script>
+
+<script type="text/template" class="resume-box-template" style="display:none">
+{{#.}}<li><a href="{{.}}" target="_blank">{{.}}</a></li>{{/.}}
+</script>

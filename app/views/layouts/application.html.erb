@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>CareerExtractor</title>
+  <%= stylesheet_link_tag    "application", :media => "all" %>
+  <%= javascript_include_tag "application" %>
+  <%= csrf_meta_tags %>
+</head>
+<body>
+
+<div class="container-narrow">
+  <div class="masthead">
+    <%#= render 'layouts/user_header' %>
+    <h3 class="muted"><%= link_to "Resume Extractor", root_path %></h3>
+    <h5 class="muted">A simple extractor for resumes in career mailbox!</h5>
+  </div>
+  <hr />
+  <%= yield %>
+</div>
+
+</body>
+</html>
