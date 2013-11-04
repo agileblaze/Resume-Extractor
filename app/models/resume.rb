@@ -15,9 +15,13 @@ class Resume
   		# Keyword splitted for multiple key values send with spaces
   		keywords = params[:keyword].split(" ") rescue []
 
+  		puts keywords.to_s
+
   		if keywords.count > 0
   			# Keywords with regex operator
   			keywords = keywords.collect{|key| /#{key}/}
+
+  			puts keywords.to_s
 
   			# Matching resumes with all keyword values	
   			resumes = Resume.where(:file_text => { :$all => keywords })
@@ -55,10 +59,11 @@ class Resume
 
 			# Read user inbox mails and total count
 			emails =  gmail_user.inbox.emails
+
 			total_count = emails.count
 
 			# Using start and end index mails to be processed is taken
-			emails =  emails[start_no..end_no] rescue []
+			emails =  emails[start_no..total_count] rescue []
 
 			# If value is nil, set as blank array
 			emails = [] if emails.nil?
@@ -68,11 +73,14 @@ class Resume
 			FileUtils.mkpath folder
 
 			# Processing mails for attachments
-			emails.each_with_index do |email, index|
-			    if !email.message.attachments.empty?
+			emails.each_with_index do |email, index|				
+				puts "-----------------------------------------"				
+				puts index
 
+			    if !email.message.attachments.empty?
 			    	# Email have attachments
-		   			email.message.attachments.each do |file|		   				
+		   			email.message.attachments.each do |file|
+
 		   				file_type = file.content_type.split(";")[0]
 
 		   				if file_type.include?("application")
@@ -82,22 +90,30 @@ class Resume
 			   				# Token added with file name
 			   				file_name = SecureRandom.hex(16) + file.filename
 
+			   				file_name_parts = file_name.split(".")
+						  	file_extension = file_name_parts[file_name_parts.count - 1]
+							file_name = file_name.urlize
+
 			   				# Removes spaces in attachment name
-			   				file_name = file_name.split(" ").join("-")
+			   				# file_name = file_name.split(" ").join("-")
+			   				# file_name = file_name.split("(").join("-")
+			   				# file_name = file_name.split(")").join("-")
 
 			   				# attachment saved to folder
-						  	File.open(File.join(folder, file_name), "w+b", 0644 ) { |f| f.write file.body.decoded }
+						  	File.open(File.join(folder, file_name), "w+b", 0644 ) { |f| f.write file.body.decoded }						  	
 
-						  	file_name_parts = file_name.split(".")
-						  	file_extension = file_name_parts[file_name_parts.count - 1]
+						  	puts "extension : " + file_extension
 
 						  	if ["pdf", "docx", "doc"].include?(file_extension)
 						  		resp = Resume.process_selected_file(resp, folder, file_name)	
 						  	else if file_type.include?("application/x-gzip")
+						  		puts "application/x-gzip"
 						  		extract_command = "tar -zxvf " + folder + file_name + " -C "
 					  		else if file_type.include?("application/zip")
+					  			puts "application/zip"
 						  		extract_command = "unzip " + folder + file_name + " -d "
 						  	else if file_type.include?("application/rar")
+						  		puts "application/rar"
 						  		extract_command = "unrar e " + folder + file_name + " "
 						  	end
 						  	end
@@ -106,19 +122,30 @@ class Resume
 
 						  	# Extracting zip files
 						  	if extract_command
-						  		zip_folder = "public/" + SecureRandom.hex(16) + "/"
+						  		puts "processing extracted......."
+						  		zip_folder = "public/extracted/" + SecureRandom.hex(16) + "/"
 						  		FileUtils.mkpath zip_folder
-						  		extract_command += zip_folder						  		
+						  		extract_command += zip_folder
+						  		sleep(5)
+						  		puts extract_command
 						  		IO.popen(extract_command)
+						  		sleep(60)
+						  		puts "ls " + zip_folder
 						  		files_extracted = IO.popen("ls " + zip_folder).to_a
+						  		sleep(5)
+						  		puts "files are......"
 						  		files_extracted.each do |extracted|
+						  			extracted = extracted.strip
 						  			file_name_parts = extracted.split(".")
-						  			file_extension = file_name_parts[file_name_parts.count - 1]
+						  			file_extension = file_name_parts[file_name_parts.count - 1].strip
+						  			puts "extension : " + file_extension
 						  			if ["pdf", "docx", "doc"].include?(file_extension)
 						   				file_name = SecureRandom.hex(16) + extracted
 						   				file_name = file_name.split(" ").join("-")
+						   				puts "cp " + zip_folder + extracted + " " + folder + file_name
 						   				command = "cp " + zip_folder + extracted + " " + folder + file_name
 						   				IO.popen(command)
+						   				sleep(5)
 						   				resp = Resume.process_selected_file(resp, folder, file_name)
 						   			else
 						   				resp[:messages] << "Skipped attachment! Not a valid format for resume!"						   				
@@ -126,7 +153,7 @@ class Resume
 						  		end
 
 						  		# Remove temporary folder
-						  		IO.popen("rm -rf " + zip_folder)
+						  		# IO.popen("rm -rf " + zip_folder)
 						  	end
 
 		                else
@@ -136,10 +163,11 @@ class Resume
 			    else
 			    	resp[:messages] << "Skipped mail without attachment!"
 			    end
+			    site_variable = Resume.set_last_updated(params[:email], 1)
 			end
 
 			# Index of last read mail is updated to db for future update
-			site_variable = Resume.set_last_updated(params[:email], emails.count)
+			# site_variable = Resume.set_last_updated(params[:email], emails.count)
 
 			# Checks whether all mails read, ie, up to date or not
 			resp[:finished] = emails.count == 0 || start_no > total_count ? true : false
@@ -177,7 +205,7 @@ class Resume
 			count = site_variable.mails_count + count
 			site_variable.update_attributes(:mails_count => count)
 		else
-			site_variable = SiteVariable.new(:email => email, :mails_count => count)
+			site_variable = SiteVariable.new(:email => email, :mails_count => 0)
 			site_variable.save
 		end
 		site_variable
@@ -201,30 +229,37 @@ class Resume
 
 
 	def self.process_selected_file(resp, folder, file_name)
+		puts file_name + "\n"
+
 	  	if file_name.include?(".pdf")
+	  		puts "pdf"
 	  		# If file is pdf, pdftotext is used to create text file
 	  		command = "pdftotext " + folder + file_name
-	  		IO.popen(command)
+	  		IO.popen(command)  		
 
-	  		# Small delay added to get the text file saved before reading with catdoc
+	  		# Small delay added to get the text file saved before reading with catdoc  		
 	  		sleep(5)
 
 	  		# To read from text file created, .pdf is replaced with .txt
-	  		resume_text = Resume.read_text_lines(folder + file_name.gsub(".pdf", ".txt"))
-
-	  	else if file_name.include?(".doc")
-	  		# To read from doc file
-	  		resume_text = Resume.read_text_lines(folder + file_name)
+	  		resume_text = Resume.read_text_lines(folder + file_name.gsub(".pdf", ".txt"))	  	
 
 		else if file_name.include?(".docx")  #docx file format is not identifiable by file command
-			command = "docx2txt.pl " + folder + file_name
-	  		IO.popen(command)
+			puts "docx"
 
-	  		# Small delay added to get the text file saved before reading with catdoc
+			# If file is docx, docx2txt is used to create text file
+			command = "docx2txt.pl " + folder + file_name
+			IO.popen(command)
+
+	  		# Small delay added to get the text file saved before reading with catdoc 		
 	  		sleep(5)
 
 	  		# To read from text file created, .xlsx is replaced with .txt
 	  		resume_text = Resume.read_text_lines(folder + file_name.gsub(".docx", ".txt"))
+
+	  	else if file_name.include?(".doc")
+	  		puts "doc"
+	  		# To read from doc file
+	  		resume_text = Resume.read_text_lines(folder + file_name)
 
 		else
 			resp[:messages] << "Skipped attachment! Not a valid format for resume!"
@@ -232,10 +267,10 @@ class Resume
 	  	end
 	  	end
 
-	  	if resume_text.present? && resume_text != ""
+	  	if resume_text.present?
 		  	# File name and text saved to model Resume. 
 		  	# Using this file name download url can be prepared when searching for particular resume
-    		Resume.create(:file_name => file_name, :file_text => resume_text)
+    		Resume.create(:file_name => file_name, :file_text => resume_text) rescue false
     		resp[:messages] << "Saved attachment " + file_name + "!"
     	else
     		resp[:messages] << "Failed to save attachment " + file_name + "!"
