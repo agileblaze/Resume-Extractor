@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'shellwords'
 # ecoding: utf-8
 
 class Resume
@@ -50,20 +51,25 @@ class Resume
 
 			# Checks whether email account used earlier to get mails count already fetched
 			site_variable = SiteVariable.find_by_email(params["email"])
+			current_index = site_variable.present? ? site_variable.mails_count : 0
 
 			# If site_variable exists starting index of mail to be fetched is set to site_variable.mails_count + 1, otherwise 0
-			start_no = site_variable.present? ? site_variable.mails_count + 1 : 0
+			# start_no = site_variable.present? ? site_variable.mails_count + 1 : 0
 
 			# End index of mail is set to start index + limit
-			end_no = start_no + params["limit"]
+			# end_no = start_no + params["limit"]
 
 			# Read user inbox mails and total count
 			emails =  gmail_user.inbox.emails
-
 			total_count = emails.count
+			start_no = 0
+			end_no = total_count - 1
+
+			# puts emails[0].uid
+			# puts emails[1].uid
 
 			# Using start and end index mails to be processed is taken
-			emails =  emails[start_no..total_count] rescue []
+			# emails =  emails[start_no..total_count] rescue []
 
 			# If value is nil, set as blank array
 			emails = [] if emails.nil?
@@ -74,9 +80,10 @@ class Resume
 
 			# Processing mails for attachments
 			emails.each_with_index do |email, index|				
-				puts "-----------------------------------------"				
+				puts "-----------------------------------------"
 				puts index
 
+			if email.uid.to_i > current_index
 			    if !email.message.attachments.empty?
 			    	# Email have attachments
 		   			email.message.attachments.each do |file|
@@ -88,16 +95,13 @@ class Resume
 			   				resp[:messages] << "Found attachment " + file.filename + "!"
 
 			   				# Token added with file name
-			   				file_name = SecureRandom.hex(16) + file.filename
-
-			   				file_name_parts = file_name.split(".")
+			   				file_name = SecureRandom.hex(16)
+			   				file_name_parts = file.filename.split(".")
 						  	file_extension = file_name_parts[file_name_parts.count - 1]
-							file_name = file_name.urlize
+							file_name += ("." + file_extension) if file_extension.present?
 
 			   				# Removes spaces in attachment name
 			   				# file_name = file_name.split(" ").join("-")
-			   				# file_name = file_name.split("(").join("-")
-			   				# file_name = file_name.split(")").join("-")
 
 			   				# attachment saved to folder
 						  	File.open(File.join(folder, file_name), "w+b", 0644 ) { |f| f.write file.body.decoded }						  	
@@ -129,7 +133,7 @@ class Resume
 						  		sleep(5)
 						  		puts extract_command
 						  		IO.popen(extract_command)
-						  		sleep(60)
+						  		sleep(20)
 						  		puts "ls " + zip_folder
 						  		files_extracted = IO.popen("ls " + zip_folder).to_a
 						  		sleep(5)
@@ -140,10 +144,10 @@ class Resume
 						  			file_extension = file_name_parts[file_name_parts.count - 1].strip
 						  			puts "extension : " + file_extension
 						  			if ["pdf", "docx", "doc"].include?(file_extension)
-						   				file_name = SecureRandom.hex(16) + extracted
-						   				file_name = file_name.split(" ").join("-")
-						   				puts "cp " + zip_folder + extracted + " " + folder + file_name
-						   				command = "cp " + zip_folder + extracted + " " + folder + file_name
+						   				file_name = SecureRandom.hex(16) + "." + file_extension
+						   				# file_name = file_name.split(" ").join("-")
+						   				puts "cp " + zip_folder + Shellwords.escape(extracted) + " " + folder + file_name
+						   				command = "cp " + zip_folder + Shellwords.escape(extracted) + " " + folder + file_name
 						   				IO.popen(command)
 						   				sleep(5)
 						   				resp = Resume.process_selected_file(resp, folder, file_name)
@@ -163,14 +167,15 @@ class Resume
 			    else
 			    	resp[:messages] << "Skipped mail without attachment!"
 			    end
-			    site_variable = Resume.set_last_updated(params[:email], 1)
+			    site_variable = Resume.set_last_updated(params[:email], email.uid)
+			end
 			end
 
 			# Index of last read mail is updated to db for future update
 			# site_variable = Resume.set_last_updated(params[:email], emails.count)
 
 			# Checks whether all mails read, ie, up to date or not
-			resp[:finished] = emails.count == 0 || start_no > total_count ? true : false
+			resp[:finished] = true #emails.count == 0 || start_no > total_count ? true : false
 			if resp[:finished]
 				resp[:percentage] = 100
 				resp[:messages] << "Up to date!"
@@ -198,14 +203,14 @@ class Resume
 
 
 
-	# Updates last updated mail index for each mail account  
-	def self.set_last_updated(email, count)
+	# Updates last updated mail id for each mail account  
+	def self.set_last_updated(email, uid)
 		site_variable = SiteVariable.find_by_email(email)
 		if site_variable
-			count = site_variable.mails_count + count
-			site_variable.update_attributes(:mails_count => count)
+			# count = site_variable.mails_count + count
+			site_variable.update_attributes(:mails_count => uid)
 		else
-			site_variable = SiteVariable.new(:email => email, :mails_count => 0)
+			site_variable = SiteVariable.new(:email => email, :mails_count => uid)
 			site_variable.save
 		end
 		site_variable
@@ -268,6 +273,8 @@ class Resume
 	  	end
 
 	  	if resume_text.present?
+	  		resume_text = resume_text.collect{|text| text.downcase rescue "" }
+
 		  	# File name and text saved to model Resume. 
 		  	# Using this file name download url can be prepared when searching for particular resume
     		Resume.create(:file_name => file_name, :file_text => resume_text) rescue false
