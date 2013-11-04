@@ -1,5 +1,4 @@
 require 'rubygems'
-require 'mongo'
 
 source 'https://rubygems.org'
 
@@ -36,7 +35,7 @@ gem 'jquery-rails'
 
 # To use debugger
 # gem 'debugger'
-
+gem 'mongo'
 gem 'mongo_mapper'
 gem 'bson_ext'
 

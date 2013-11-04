@@ -143,6 +143,7 @@ DEPENDENCIES
   jquery-rails
   kaminari
   magic_encoding
+  mongo
   mongo_mapper
   rails (= 3.2.12)
   sass-rails (~> 3.2.3)
