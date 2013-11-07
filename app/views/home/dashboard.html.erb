@@ -2,7 +2,8 @@
     <div class="span3 bs-docs-sidebar">
         <ul class="nav nav-list bs-docs-sidenav affix">
           <li><a href="#attachtments"><i class="icon-chevron-right"></i>Download Attachtments</a></li>
-          <li><a href="#resumes"><i class="icon-chevron-right"></i>Matching Resume</a></li>
+          <li><a href="#accounts"><i class="icon-chevron-right"></i>Attached Accounts</a></li>
+          <li><a href="#resumes"><i class="icon-chevron-right"></i>Matching Resume</a></li>          
         </ul>
     </div>
     <div class="span9">
@@ -34,7 +35,24 @@
           <ul id="mail_attchments"> </ul>
         </section>
 
-        <br>
+        <br><br><br><br>
+
+        <!-- Accounts
+        ================================================== -->
+        <section id="accounts">
+          <div class="page-header">
+              <h1><small>Accounts Connected</small></h1>
+          </div>
+
+          <ul>
+              <% SiteVariable.all.each do |account| %>
+                  <li><%= account.email %> (Mails loaded : <%= account.mails_count %>)</li>
+              <% end %>
+          </ul>
+          
+        </section>
+
+        <br><br><br><br>
 
         <!-- Resume
         ================================================== -->
