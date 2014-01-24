@@ -3,7 +3,8 @@
         <ul class="nav nav-list bs-docs-sidenav affix">
           <li><a href="#attachtments"><i class="icon-chevron-right"></i>Download Attachtments</a></li>
           <li><a href="#accounts"><i class="icon-chevron-right"></i>Attached Accounts</a></li>
-          <li><a href="#resumes"><i class="icon-chevron-right"></i>Matching Resume</a></li>          
+          <li><a href="#resumes"><i class="icon-chevron-right"></i>Matching Resumes</a></li>
+          <li><a href="#recent-resumes"><i class="icon-chevron-right"></i>Recent 100 Resumes</a></li>
         </ul>
     </div>
     <div class="span9">
@@ -12,6 +13,7 @@
         <section id="attachtments">
           <div class="page-header">
               <h1><small>Download Attachments</small></h1>
+              <h4><small>(Download new resumes received. Do update at least weekly)</small></h4>
           </div>
 
           <%= form_tag home_dashboard_path do  %>
@@ -42,6 +44,7 @@
         <section id="accounts">
           <div class="page-header">
               <h1><small>Accounts Connected</small></h1>
+              <h4><small>(Following accounts used to update database. Can use any no. of accounts)</small></h4>
           </div>
 
           <ul>
@@ -59,6 +62,7 @@
         <section id="resumes">
           <div class="page-header">
               <h1><small>Matching Resumes</small></h1>
+              <h4><small>(Use '<strong>,</strong>' for multiple keywords. Spaces allowed within a keyword)</small></h4>
           </div>
 
           <%= form_tag home_dashboard_path do  %>
@@ -71,7 +75,22 @@
               </div>          
           <% end %>
           
-          <ul id="resume_files"> </ul>
+          <ol id="resume_files"> </ol>
+        </section>
+        <br><br><br><br>
+
+        <!-- Recent Resume
+        ================================================== -->
+        <section id="recent-resumes">
+          <div class="page-header">
+              <h1><small>Recent 100 Resumes</small></h1>              
+          </div>
+
+          <ol id="resume_files">
+            <% Resume.order(:created_at.desc).limit(100).each do |resume| %>
+              <li><a href="<%= root_url + 'attachments/' + resume.file_name %>" target="_blank"><%= resume.file_original + " (" + resume.created_at + ")" %></a></li>
+            <% end %>          
+           </ol>
         </section>
 
         <br><br><br>
@@ -86,5 +105,5 @@
 </script>
 
 <script type="text/template" class="resume-box-template" style="display:none">
-{{#.}}<li><a href="{{.}}" target="_blank">{{.}}</a></li>{{/.}}
+{{#.}}<li><a href="<%= root_url + 'attachments/' %>{{file_name}}" target="_blank">{{file_original}}  ({{created_at}})</a></li>{{/.}}
 </script>

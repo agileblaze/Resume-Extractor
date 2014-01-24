@@ -24,7 +24,7 @@ class HomeController < ApplicationController
 
   # Matching keyword values with resume text in db
   # For "php" - all resumes which have the word php will be listed
-  # For "php jquery" - all resumes which have both php & jquery will be listed
+  # For "php , jquery" - all resumes which have both php & jquery will be listed
   def resumes_matching
 		resp = @resp
 		# Prcessing keyword values for matching resume list

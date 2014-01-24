@@ -32,7 +32,9 @@ function initialize_api_call(api_params, callback, callback_params){
 		  },
 		  error : function()
 		  {
-
+		  	alert("Process failed!");
+		  	$("#gmail_loading").hide();
+		  	$("#resume_loading").hide();
 		  }
 	});
 }

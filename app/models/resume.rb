@@ -13,30 +13,41 @@ class Resume
 	key :file_text,  Array
 	timestamps!
 
+	def created_at
+		self.file_date.strftime("%Y %b %d")
+	end
+
   	def self.resumes_matching(resp, params)
   		puts "Process started!"
 
   		# Keyword splitted for multiple key values send with spaces
-  		keywords = params[:keyword].split(" ") rescue []
+  		keywords = params[:keyword].downcase.split(",") rescue []
 
   		puts "Keywords : " + keywords.to_s
 
   		if keywords.count > 0
   			# Keywords with regex operator
-  			keywords = keywords.collect{|key| /#{key}/}
+  			# keywords = keywords.collect{|key| /#{key.strip}/}
+  			keywords = keywords.collect{|key| "(?=.*" + key.strip + ")" }.join("") + ".*"
+
+  			puts "Regular Expression : " + keywords
 
   			# Matching resumes with all keyword values	
-  			resumes = Resume.where(:file_text => { :$all => keywords }).order("created_at desc")
+  			# resumes = Resume.where(:file_text => { :$all => keywords }).order("file_date desc")
+  			resumes = Resume.where(:file_text => Regexp.new(keywords)).order("file_date desc")
 
 		 	# Url prepared for all resume matching to keywords
-		 	resp[:messages] = resumes.collect{|res| resp[:root_url] + "attachments/" + res.file_name}
+		 	# resp[:test] = resumes.select{|res| res["path"] = resp[:root_url] + "attachments/" + res.file_name}
+		 	# resp[:messages] = resumes.collect{|res| resp[:root_url] + "attachments/" + res.file_name}
+			resp[:messages] = resumes.fields(:file_name, :file_email, :file_date, :file_original, :created_at)
+			# .select{|res| res[:file_name] = resp[:root_url] + "attachments/" + res.file_name}
   		end
 
   		# Response status set to true which is false as default
   		resp[:status] = true
 
   		resp
-  	end
+  	end  	
 
 
   	# Following linux packages are used here : pdftotext, docx2txt, catdoc
@@ -115,36 +126,9 @@ class Resume
 							  		puts "Extracting command : " + extract_command
 
 							  		IO.popen(extract_command)
-							  		sleep(20)
-							  		files_extracted = IO.popen("ls " + zip_folder).to_a
-							  		sleep(5)
+							  		sleep(60)
 
-							  		puts "Files are......"
-
-							  		files_extracted.each do |extracted|
-							  			extracted = extracted.strip
-							  			file_name_parts = extracted.split(".")
-							  			file_extension = file_name_parts[file_name_parts.count - 1].strip
-							  			file_original = extracted.split("/")
-							  			file_original = file_original[file_original.count - 1]
-
-							  			puts "Extracted extension : " + file_extension
-
-							  			if ["pdf", "docx", "doc"].include?(file_extension)
-							   				file_name = SecureRandom.hex(16) + "." + file_extension
-							   				copy_command = "cp " + zip_folder + Shellwords.escape(extracted) + " " + folder + file_name
-
-							   				puts "Copying file : " + copy_command
-
-							   				IO.popen(copy_command)
-							   				sleep(5)
-							   				resp = Resume.process_selected_file(resp, folder, file_name, email_date, file_original)
-							   			else
-							   				resp[:messages] << "Skipped attachment! Not a valid format for resume!"
-							  			end
-							  		end
-							  		# Remove temporary folder
-							  		# IO.popen("rm -rf " + zip_folder)
+							  		resp = Resume.load_folder_files(zip_folder, folder, resp, email_date)
 							  	end
 			                else
 			                	resp[:messages] << "Skipped attachment! Not a valid format for resume!"
@@ -169,6 +153,40 @@ class Resume
 		end
 		resp
   	end
+
+
+	def self.load_folder_files(zip_folder, folder, resp, email_date)
+		files_extracted = IO.popen("ls " + zip_folder).to_a
+        sleep(5)
+
+        puts "Files are......"
+
+        files_extracted.each do |extracted|
+            extracted = extracted.strip
+            file_name_parts = extracted.split(".")
+            file_extension = file_name_parts[file_name_parts.count - 1].strip
+            file_original = extracted.split("/")
+            file_original = file_original[file_original.count - 1]
+
+            puts "Extracted extension : " + file_extension
+
+            if ["pdf", "docx", "doc"].include?(file_extension)
+                    file_name = SecureRandom.hex(16) + "." + file_extension
+                    copy_command = "cp " + zip_folder + Shellwords.escape(extracted) + " " + folder + file_name
+
+                    puts "Copying file : " + copy_command
+
+                    IO.popen(copy_command)
+                    sleep(5)
+                    resp = Resume.process_selected_file(resp, folder, file_name, email_date, file_original)
+            else
+                    resp[:messages] << "Skipped attachment! Not a valid format for resume!"
+            end
+         end
+         # Remove temporary folder
+         # IO.popen("rm -rf " + zip_folder)
+         resp
+	end
 
 
 	# Updates last updated mail id for each mail account
@@ -235,10 +253,10 @@ class Resume
 
 	  	if resume_text.present?
 	  		emails = []
-	  		resume_text = resume_text.collect{|text| email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b/i); emails << email.to_s.strip unless email.nil?; text.downcase rescue "" }
-	  		file_email = emails.join(", ")
+	  		resume_text = resume_text.collect{|text| email = text.match(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}\b/i) rescue nil; emails << email.to_s.strip unless email.nil?; text.downcase rescue "" }
+	  		file_email = emails.uniq.join(", ")
 		  	# File name and text saved to model Resume.
-    		Resume.create(:file_name => file_name, :file_text => resume_text, :file_date => file_date, :file_email => file_email) rescue false
+    		Resume.create(:file_name => file_name, :file_text => resume_text, :file_date => file_date, :file_email => file_email, :file_original => file_original) rescue false
     		resp[:messages] << "Saved attachment " + file_name + "!"
     	else
     		resp[:messages] << "Failed to save attachment " + file_name + "!"
